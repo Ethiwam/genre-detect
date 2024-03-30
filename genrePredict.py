@@ -25,18 +25,18 @@ conn = psycopg2.connect(
 cursor = conn.cursor()
 
 # Initialize the numpy label array (we'll copy a normal array to the feature array)
-cursor.execute("select count(*) from film")
+cursor.execute("select count(*) from film where film_id < 1000")
 count = cursor.fetchall()
 y = np.empty(count[0][0]) # Labels
 titles = []
 
 # Fetching data
-cursor.execute("select title, fulltext from film")
+cursor.execute("select title, fulltext from film where film_id < 1000")
 data = cursor.fetchall()
 
 for i, row in enumerate(data):
     for col in row:
-        if (len(col) >= 20):
+        if ('\'' in col):
             if 'drama' in col:
                 y[i] = 1
             else:
@@ -45,7 +45,7 @@ for i, row in enumerate(data):
             # Tokenizing, Removing Punctuation, To Lowercase
             title = re.sub(r'[^\w\s]', '', col.lower())
             tokens = word_tokenize(title)
-            
+
             # Removing Stop Words
             stop_words = set(stopwords.words('english'))
             tokens = [word for word in tokens if word not in stop_words]
@@ -53,41 +53,36 @@ for i, row in enumerate(data):
             # Stemming
             stemmer = PorterStemmer()
             tokens = [stemmer.stem(word) for word in tokens]
-            
+
             titles.append(' '.join(tokens))
             
 # Vectorization (using TF-IDF)
-vectorizer = TfidfVectorizer()
+print('Data Processed, Training Model...')
+vectorizer = TfidfVectorizer(min_df=1)
 vectorized_titles = vectorizer.fit_transform(titles)
 
 X = vectorized_titles.toarray()
 
-print('X:')
-print(X)
-print('Size: %d' % X.size)
-print('y:')
-print(y)
-print('Size: %d' % y.size)
-
 #Closing the connection
 conn.close()
-
+#"""
 # Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-"""
+
 # Define Keras model
+input_size = X[0].size # Amount of tokens changes depending on the number of inputs, so we'll scale
 model = Sequential()
-model.add(Dense(20, input_shape=(1000,), activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(5, activation='relu'))
+model.add(Dense(input_size/2, input_shape=(input_size,), activation='relu'))
+model.add(Dense(input_size/4, activation='relu'))
+model.add(Dense(input_size/8, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 
 # Compile Keras model
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # Fit the model
-model.fit(X_train, y_train, epochs=150, batch_size=10)
+model.fit(X_train, y_train, epochs=100, batch_size=2, verbose=0)
 
 _, accuracy = model.evaluate(X, y)
 print('Accuracy: %.2f' % (accuracy*100))
-"""
+#"""
