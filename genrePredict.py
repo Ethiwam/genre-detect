@@ -18,6 +18,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from sklearn.model_selection import train_test_split
 
+# Disabling Tensorflow Warnings
+import tensorflow as tf
+tf.autograph.set_verbosity(0)
+
 #establishing the connection
 conn = psycopg2.connect(
    database='pagila', user='postgres', password='p0s+Gr3*', host='127.0.0.1', port='5432'
@@ -25,13 +29,13 @@ conn = psycopg2.connect(
 cursor = conn.cursor()
 
 # Initialize the numpy label array (we'll copy a normal array to the feature array)
-cursor.execute("select count(*) from film where film_id < 1000")
+cursor.execute("select count(*) from film where film_id < 101") # There are up to 1000 vals; set to 1001 for all values
 count = cursor.fetchall()
 y = np.empty(count[0][0]) # Labels
 titles = []
 
 # Fetching data
-cursor.execute("select title, fulltext from film where film_id < 1000")
+cursor.execute("select title, fulltext from film where film_id < 101")
 data = cursor.fetchall()
 
 for i, row in enumerate(data):
@@ -65,24 +69,34 @@ X = vectorized_titles.toarray()
 
 #Closing the connection
 conn.close()
-#"""
+
 # Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
 # Define Keras model
-input_size = X[0].size # Amount of tokens changes depending on the number of inputs, so we'll scale
+input_size = X_train[0].size # Amount of tokens changes depending on the number of inputs, so we'll scale
 model = Sequential()
-model.add(Dense(input_size/2, input_shape=(input_size,), activation='relu'))
-model.add(Dense(input_size/4, activation='relu'))
-model.add(Dense(input_size/8, activation='relu'))
+model.add(Dense(input_size/2, input_shape=(input_size,), activation='softmax'))
+model.add(Dense(input_size/4, activation='softmax'))
+model.add(Dense(input_size/8, activation='softmax'))
 model.add(Dense(1, activation='sigmoid'))
 
 # Compile Keras model
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # Fit the model
-model.fit(X_train, y_train, epochs=100, batch_size=2, verbose=0)
+model.fit(X_train, y_train, epochs=2000, batch_size=10, verbose=0)
 
-_, accuracy = model.evaluate(X, y)
+_, accuracy = model.evaluate(X_test, y_test)
 print('Accuracy: %.2f' % (accuracy*100))
+
+# Predicting with the model
+print('Testing Model...')
+predictions = model.predict(X_test)
+predictions = [round(x[0]*10) for x in predictions]
+
+#"""
+for i in range(len(X_test)):
+    #print('%s => %.5f (expected %d)' % (X_test[i].tolist(), predictions[i], y[i]))
+    print('X_test[%d] => %d (expected %d)' % (i, predictions[i], y[i])) 
 #"""
