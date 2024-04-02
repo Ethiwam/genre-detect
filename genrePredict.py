@@ -24,7 +24,7 @@ tf.autograph.set_verbosity(0)
 
 #establishing the connection
 conn = psycopg2.connect(
-   database='pagila', user='postgres', password='p0s+Gr3*', host='127.0.0.1', port='5432'
+   database='pagila', user='postgres', password='------', host='127.0.0.1', port='5432'
 )
 cursor = conn.cursor()
 
